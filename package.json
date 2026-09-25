@@ -20,7 +20,7 @@
     "@earendil-works/pi-coding-agent": ">=0.80.0"
   },
   "scripts": {
-    "test": "node packages/bedrock-sso/inject.mjs && node packages/cache-status/stats.mjs"
+    "test": "node packages/bedrock-sso/inject.mjs && node packages/cache-status/stats.mjs && node packages/beads-reminder/detect.mjs"
   },
   "engines": {
     "node": ">=22"
