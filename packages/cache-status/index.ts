@@ -1,7 +1,7 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { summarize } from "./stats.mjs";
+import { summarize, tokens } from "./stats.mjs";
 
-// Footer status with prompt-cache use: hit rate, last/session cost, estimated savings.
+// Status line below the editor with prompt-cache use: hit rate, last-call tokens, last/session cost.
 // Turns red when a Claude model makes two calls in a row with no cache activity.
 
 const KEY = "cache";
@@ -17,14 +17,17 @@ export default function (pi: ExtensionAPI) {
     // message_end can fire before the entry is saved to the branch.
     if (latest?.role === "assistant" && msgs[msgs.length - 1]?.timestamp !== latest.timestamp) msgs.push(latest);
 
-    const s = summarize(msgs, (provider, id) => ctx.modelRegistry.find(provider, id)?.cost);
-    if (!s) return ctx.ui.setStatus(KEY, undefined);
+    const s = summarize(msgs);
+    if (!s) return ctx.ui.setWidget(KEY, undefined);
 
     const t = ctx.ui.theme;
     const text =
-      `cache ${pct(s.lastHit)} (session ${pct(s.sessionHit)}) | last ${usd(s.lastCost)}` +
-      ` | session ${usd(s.cost)} | saved ~${usd(s.saved)}`;
-    ctx.ui.setStatus(KEY, s.noCache ? t.fg("error", `NO CACHE | ${text}`) : t.fg("dim", text));
+      `cache ${pct(s.lastHit)} (session ${pct(s.sessionHit)}) | ${tokens(s.lastIn)} in / ${tokens(s.lastOut)} out` +
+      ` | last ${usd(s.lastCost)} | session ${usd(s.cost)}`;
+    const line = s.noCache ? t.fg("error", `NO CACHE | ${text}`) : t.fg("dim", text);
+    // Widget, not setStatus: Prime Agent's footer renders no extension statuses,
+    // and setFooter is a no-op in daemon mode. String-array widgets are forwarded.
+    ctx.ui.setWidget(KEY, [line], { placement: "belowEditor" });
   };
 
   pi.on("session_start", (_e, ctx) => update(ctx));
